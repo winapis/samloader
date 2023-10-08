@@ -5,12 +5,14 @@ import argparse
 import os
 import base64
 import xml.etree.ElementTree as ET
+import datetime
 from tqdm import tqdm
 
 from . import request
 from . import crypt
 from . import fusclient
 from . import versionfetch
+from .logging import log_to_file
 
 def main():
     parser = argparse.ArgumentParser(description="Download and query firmware for Samsung devices.")
@@ -32,6 +34,8 @@ def main():
     decrypt.add_argument("-i", "--in-file", help="encrypted firmware file input", required=True)
     decrypt.add_argument("-o", "--out-file", help="decrypted firmware file output", required=True)
     args = parser.parse_args()
+    # Log the command and arguments
+    log_to_file(f"Command: {' '.join(os.sys.argv)}")
     if args.command == "download":
         client = fusclient.FUSClient()
         # We can only download latest firmwares anyway
@@ -44,12 +48,19 @@ def main():
         print("FW Version : " + args.fw_ver)
         print("FW Size : {:.3f} GB".format(size / (1024**3)))
         print("File Path : " + out)
+        # Log the device information
+        log_to_file(f"Device: {args.dev_model}")
+        log_to_file(f"CSC: {args.dev_region}")
+        log_to_file(f"FW: {args.fw_ver}")
+        log_to_file(f"Path: {out}")
         # Auto-Resume
         if os.path.isfile(out):
             args.resume = True
             print("resuming", filename)
+            log_to_file(f"resuming: {filename}")
         else:
             print("downloading", filename)
+            log_to_file(f"downloading: {filename}")
         dloffset = os.stat(out).st_size if args.resume else 0
         if dloffset == size:
             print("already downloaded!")
@@ -59,13 +70,28 @@ def main():
         r = client.downloadfile(path+filename, dloffset)
         if args.show_md5 and "Content-MD5" in r.headers:
             print("MD5:", base64.b64decode(r.headers["Content-MD5"]).hex())
-        pbar = tqdm(total=size, initial=dloffset, unit="B", unit_scale=True)
-        for chunk in r.iter_content(chunk_size=0x10000):
-            if chunk:
-                fd.write(chunk)
-                fd.flush()
-                pbar.update(0x10000)
+
+        log_interval = size // 10  # Log every 10%
+        progress = dloffset
+
+        # Download and log progress
+        with tqdm(total=size, initial=dloffset, unit="B", unit_scale=True) as pbar:
+            for chunk in r.iter_content(chunk_size=0x10000):
+                if chunk:
+                    fd.write(chunk)
+                    fd.flush()
+                    pbar.update(len(chunk))
+                    
+                    # Update progress
+                    progress += len(chunk)
+                    
+                    # Check if it's time to log the progress
+                    if progress >= log_interval:
+                        log_to_file(f"Download progress: {progress / (1024**2):.2f} MB / {size / (1024**2):.2f} MB")
+                        log_interval += size // 10
+
         fd.close()
+        log_to_file("Download completed.")
         # Auto decrypt
         args.do_decrypt = True
         if args.do_decrypt: # decrypt the file if needed
@@ -82,6 +108,7 @@ def main():
                 with open(dec, "wb") as outf:
                     crypt.decrypt_progress(inf, outf, key, length)
             os.remove(out)
+            log_to_file("Decryption completed.")
     elif args.command == "checkupdate":
         print(versionfetch.getlatestver(args.dev_model, args.dev_region))
     elif args.command == "decrypt":
