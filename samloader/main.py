@@ -35,8 +35,13 @@ def main():
     if args.command == "download":
         client = fusclient.FUSClient()
         path, filename, size = getbinaryfile(client, args.fw_ver, args.dev_model, args.dev_region)
-        print("resuming" if args.resume else "downloading", filename)
         out = args.out_file if args.out_file else os.path.join(args.out_dir, filename)
+        # Auto-Resume
+        if os.path.isfile(out):
+            args.resume = True
+            print("resuming", filename)
+        else:
+            print("downloading", filename)
         dloffset = os.stat(out).st_size if args.resume else 0
         if dloffset == size:
             print("already downloaded!")
