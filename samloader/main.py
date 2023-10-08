@@ -36,9 +36,14 @@ def main():
         client = fusclient.FUSClient()
         # We can only download latest firmwares anyway
         args.fw_ver = versionfetch.getlatestver(args.dev_model, args.dev_region)
-        print("Version : " + args.fw_ver)
         path, filename, size = getbinaryfile(client, args.fw_ver, args.dev_model, args.dev_region)
         out = args.out_file if args.out_file else os.path.join(args.out_dir, filename)
+        # Print information
+        print("Device : " + args.dev_model)
+        print("CSC : " + args.dev_region)
+        print("FW Version : " + args.fw_ver)
+        print("FW Size : {:.3f} GB".format(size / (1024**3)))
+        print("File Path : " + out)
         # Auto-Resume
         if os.path.isfile(out):
             args.resume = True
