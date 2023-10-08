@@ -54,16 +54,34 @@ def main():
         log_to_file(f"FW: {args.fw_ver}")
         log_to_file(f"Path: {out}")
         # Auto-Resume
-        if os.path.isfile(out):
+        if os.path.isfile(out.replace(".enc4", "")):
+            print("File already downloaded and decrypted!")
+            log_to_file("File already downloaded and decrypted!")
+            return
+        elif os.path.isfile(out):
             args.resume = True
-            print("resuming", filename)
-            log_to_file(f"resuming: {filename}")
+            print("Resuming", filename)
+            log_to_file(f"Resuming: {filename}")
         else:
-            print("downloading", filename)
-            log_to_file(f"downloading: {filename}")
+            print("Downloading", filename)
+            log_to_file(f"Downloading: {filename}")
         dloffset = os.stat(out).st_size if args.resume else 0
         if dloffset == size:
             print("already downloaded!")
+            if os.path.isfile(out):
+                print("FW Downloaded but not decrypted")
+                log_to_file("FW Downloaded but not decrypted")
+                dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
+                print("\ndecyrpting", out)
+                # TODO: remove code duplication with decrypt command
+                getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
+                key = getkey(args.fw_ver, args.dev_model, args.dev_region)
+                length = os.stat(out).st_size
+                with open(out, "rb") as inf:
+                    with open(dec, "wb") as outf:
+                        crypt.decrypt_progress(inf, outf, key, length)
+                os.remove(out)
+                log_to_file("FW Decrypted")
             return
         fd = open(out, "ab" if args.resume else "wb")
         initdownload(client, filename)
@@ -97,7 +115,7 @@ def main():
         if args.do_decrypt: # decrypt the file if needed
             dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
             if os.path.isfile(dec):
-                print("file {} already exists, refusing to auto-decrypt!")
+                print("file {dec} already exists, refusing to auto-decrypt!")
                 return
             print("\ndecyrpting", out)
             # TODO: remove code duplication with decrypt command
