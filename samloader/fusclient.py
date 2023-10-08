@@ -6,6 +6,7 @@
 import requests
 
 from . import auth
+from .logging import log_response
 
 class FUSClient:
     """ FUS API client. """
@@ -20,6 +21,7 @@ class FUSClient:
                             headers={"Authorization": authv, "User-Agent": "Kies2.0_FUS"},
                             cookies={"JSESSIONID": self.sessid})
         # If a new NONCE is present, decrypt it and update our auth token.
+        log_response(f"Nonce Request from {path}:\n{req.text}")
         if "NONCE" in req.headers:
             self.encnonce = req.headers["NONCE"]
             self.nonce = auth.decryptnonce(self.encnonce)
@@ -27,7 +29,9 @@ class FUSClient:
         # Update the session cookie if needed.
         if "JSESSIONID" in req.cookies:
             self.sessid = req.cookies["JSESSIONID"]
+        log_response(f"Response from {path}:\n{req.text}")
         req.raise_for_status()
+        log_response(f"Status from {path}:\n{req.text}")
         return req.text
     def downloadfile(self, filename: str, start: int = 0) -> requests.Response:
         """ Make a FUS cloud request to download a given file. """
@@ -39,5 +43,7 @@ class FUSClient:
             headers["Range"] = "bytes={}-".format(start)
         req = requests.get("http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do",
                            params="file=" + filename, headers=headers, stream=True)
+        log_response(f"Request from {self}:\n{req.text}")
         req.raise_for_status()
+        log_response(f"Response from {self}:\n{req.text}")
         return req

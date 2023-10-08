@@ -13,6 +13,8 @@ from . import crypt
 from . import fusclient
 from . import versionfetch
 from .logging import log_to_file
+from .logging import log_response
+import xml.dom.minidom
 
 def main():
     parser = argparse.ArgumentParser(description="Download and query firmware for Samsung devices.")
@@ -144,6 +146,10 @@ def initdownload(client, filename):
 def getbinaryfile(client, fw, model, region):
     req = request.binaryinform(fw, model, region, client.nonce)
     resp = client.makereq("NF_DownloadBinaryInform.do", req)
+    
+    # Log the XML response directly
+    log_response(f"Generated Binary Request at BinaryInform for {model}, {region}\n{resp}")
+
     root = ET.fromstring(resp)
     status = int(root.find("./FUSBody/Results/Status").text)
     if status != 200:

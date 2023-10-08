@@ -4,6 +4,8 @@
 """ Build FUS XML requests. """
 
 import xml.etree.ElementTree as ET
+from .logging import log_response
+import xml.dom.minidom
 
 def getlogiccheck(inp: str, nonce: str) -> str:
     """ Calculate the request checksum for a given input and nonce. """
@@ -41,6 +43,8 @@ def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
         "DEVICE_MODEL_NAME": model,
         "LOGIC_CHECK": getlogiccheck(fwv, nonce)
     })
+    xml_response = xml.dom.minidom.parseString(ET.tostring(fusmsg, encoding="utf-8")).toprettyxml()
+    log_response(f"Generated Binary Request at BinaryInform for {model}, {region}\n{xml_response}")
     return ET.tostring(fusmsg)
 
 def binaryinit(filename: str, nonce: str) -> str:
