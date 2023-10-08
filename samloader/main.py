@@ -18,7 +18,7 @@ def main():
     parser.add_argument("-r", "--dev-region", help="device region code", required=True)
     subparsers = parser.add_subparsers(dest="command")
     dload = subparsers.add_parser("download", help="download a firmware")
-    dload.add_argument("-v", "--fw-ver", help="firmware version to download", required=True)
+    dload.add_argument("-v", "--fw-ver", help="firmware version to download", required=False)
     dload.add_argument("-R", "--resume", help="resume an unfinished download", action="store_true")
     dload.add_argument("-M", "--show-md5", help="print the expected MD5 hash of the downloaded file", action="store_true")
     dload.add_argument("-D", "--do-decrypt", help="auto-decrypt the downloaded file after downloading", action="store_true")
@@ -34,6 +34,9 @@ def main():
     args = parser.parse_args()
     if args.command == "download":
         client = fusclient.FUSClient()
+        # We can only download latest firmwares anyway
+        args.fw_ver = versionfetch.getlatestver(args.dev_model, args.dev_region)
+        print("Version : " + args.fw_ver)
         path, filename, size = getbinaryfile(client, args.fw_ver, args.dev_model, args.dev_region)
         out = args.out_file if args.out_file else os.path.join(args.out_dir, filename)
         # Auto-Resume
