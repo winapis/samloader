@@ -30,10 +30,37 @@ def build_reqbody(fusmsg: ET.Element, params: dict):
         sedata = ET.SubElement(setag, "Data")
         sedata.text = str(value)
 
+def select_region():
+    """ Prompt the user to select a region. """
+    print("Select Region:")
+    print("1) DE (Usually updates faster)")
+    print("2) RO")
+    
+    choice = input("Select the Region you wish to use for EUX: ")
+    
+    if choice == "1":
+        return "DE"
+    elif choice == "2":
+        return "RO"
+    else:
+        print("Invalid choice. Defaulting to DE.")
+        return "DE"
+
 def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
     """ Build a BinaryInform request. """
     fusmsg = ET.Element("FUSMsg")
     build_reqhdr(fusmsg)
+
+    additional_fields = {}
+    if region == "EUX":
+        selected_region = select_region()
+        additional_fields = {
+            "DEVICE_AID_CODE": region,
+            "DEVICE_CC_CODE": selected_region,
+            "MCC_NUM": "262" if selected_region == "DE" else "226",
+            "MNC_NUM": "01" if selected_region == "DE" else "10"
+        }
+
     build_reqbody(fusmsg, {
         "ACCESS_MODE": 2,
         "BINARY_NATURE": 1,
@@ -41,7 +68,10 @@ def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
         "DEVICE_FW_VERSION": fwv,
         "DEVICE_LOCAL_CODE": region,
         "DEVICE_MODEL_NAME": model,
-        "LOGIC_CHECK": getlogiccheck(fwv, nonce)
+        "UPGRADE_VARIABLE": "0",
+        "OBEX_SUPPORT": "0",
+        "LOGIC_CHECK": getlogiccheck(fwv, nonce),
+        **additional_fields  # Include additional fields if applicable
     })
     xml_response = xml.dom.minidom.parseString(ET.tostring(fusmsg, encoding="utf-8")).toprettyxml()
     log_response(f"Generated Binary Request at BinaryInform for {model}, {region}\n{xml_response}")
