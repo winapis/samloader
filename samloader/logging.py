@@ -5,7 +5,7 @@ import datetime
 
 # Main logging switch
 logging_enabled = True
-FUS = True
+FUS = False
 # Log file name
 log_filename = "samloader.log"
 response_filename = "FUS.log"
