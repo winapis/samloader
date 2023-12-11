@@ -1,8 +1,8 @@
 # samloader
 Download firmware for Samsung devices (without any extra Windows drivers).
 
-## Project is archived
-This project is no longer maintained. Please see [STATEMENT.pdf](STATEMENT.pdf).
+## Project is Active.
+Former deprecation notice. Please see [STATEMENT.pdf](https://github.com/samloader/samloader/blob/master/STATEMENT.pdf).
 
 ### Licensing statement, June 19 2023
 
@@ -30,9 +30,26 @@ people who are not nlscc.
 
 ## Installation
 ```
-pip3 install git+https://github.com/samloader/samloader.git
+pip3 uninstall samloader (if previously installed)
+pip3 install git+https://github.com/ananjaser1211/samloader.git
 ```
-## Usage
+
+## Quick Usage
+Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
+
+`-m <model> -r <region> checkupdate`: Check the latest firmware version
+
+`-m <model> -r <region> download (-O <output-dir> or -o <output-file>)`: Auto Download/Resume And Decrypt latest firmware version
+
+### Example
+```
+$ samloader -m SM-F936B -r EUX checkupdate
+F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2
+$ samloader -m SM-F936B -r EUX download -O .
+downloading SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4
+```
+
+## Old Usage
 Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
 
 `-m <model> -r <region> checkupdate`: Check the latest firmware version
@@ -50,5 +67,6 @@ downloading GT-I8190N_BTU_1_20131118100230_9ae3yzkqmu_fac.zip.enc2
 $ samloader -m GT-I8190N -r BTU decrypt -v I8190NXXAMJ2/I8190NBTUAMJ1/I8190NXXAMJ2/I8190NXXAMJ2 -V 2 -i GT-I8190N_BTU_1_20131118100230_9ae3yzkqmu_fac.zip.enc2 -o GT-I8190N_BTU_1_20131118100230_9ae3yzkqmu_fac.zip
 [################################] 169115/169115 - 00:00:08
 ```
-## Note
-This project was formerly hosted at `nlscc/samloader`, and has moved to `samloader/samloader`.
+## Notes
+This project was formerly hosted at `nlscc/samloader`, and has moved to `ananjaser1211/samloader`.
+EUX And EUY Firmwares are now supported.
