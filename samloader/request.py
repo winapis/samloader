@@ -60,6 +60,13 @@ def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
             "MCC_NUM": "262" if selected_region == "DE" else "226",
             "MNC_NUM": "01" if selected_region == "DE" else "10"
         }
+    elif region == "EUY":
+        additional_fields = {
+            "DEVICE_AID_CODE": region,
+            "DEVICE_CC_CODE": "RS",
+            "MCC_NUM": "220",
+            "MNC_NUM": "01"
+        }
 
     build_reqbody(fusmsg, {
         "ACCESS_MODE": 2,
