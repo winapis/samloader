@@ -78,6 +78,7 @@ def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
         "UPGRADE_VARIABLE": "0",
         "OBEX_SUPPORT": "0",
         "DEVICE_IMEI_PUSH": "12345678901234",
+        "CLIENT_VERSION": "4.3.23123_1",
         "LOGIC_CHECK": getlogiccheck(fwv, nonce),
         **additional_fields  # Include additional fields if applicable
     })
