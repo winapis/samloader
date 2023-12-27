@@ -46,7 +46,7 @@ def select_region():
         print("Invalid choice. Defaulting to DE.")
         return "DE"
 
-def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
+def binaryinform(fwv: str, model: str, region: str, imei: str, nonce: str) -> str:
     """ Build a BinaryInform request. """
     fusmsg = ET.Element("FUSMsg")
     build_reqhdr(fusmsg)
@@ -77,7 +77,8 @@ def binaryinform(fwv: str, model: str, region: str, nonce: str) -> str:
         "DEVICE_MODEL_NAME": model,
         "UPGRADE_VARIABLE": "0",
         "OBEX_SUPPORT": "0",
-        "DEVICE_IMEI_PUSH": "12345678901234",
+        "DEVICE_IMEI_PUSH": imei,
+        "DEVICE_PLATFORM":"Android",
         "CLIENT_VERSION": "4.3.23123_1",
         "LOGIC_CHECK": getlogiccheck(fwv, nonce),
         **additional_fields  # Include additional fields if applicable

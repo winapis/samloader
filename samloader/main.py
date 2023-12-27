@@ -20,6 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description="Download and query firmware for Samsung devices.")
     parser.add_argument("-m", "--dev-model", help="device model", required=True)
     parser.add_argument("-r", "--dev-region", help="device region code", required=True)
+    parser.add_argument("-i", "--dev-imei", help="device imei", required=True)
     subparsers = parser.add_subparsers(dest="command")
     dload = subparsers.add_parser("download", help="download a firmware")
     dload.add_argument("-v", "--fw-ver", help="firmware version to download", required=False)
@@ -42,7 +43,7 @@ def main():
         client = fusclient.FUSClient()
         # We can only download latest firmwares anyway
         args.fw_ver = versionfetch.getlatestver(args.dev_model, args.dev_region)
-        path, filename, size = getbinaryfile(client, args.fw_ver, args.dev_model, args.dev_region)
+        path, filename, size = getbinaryfile(client, args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
         out = args.out_file if args.out_file else os.path.join(args.out_dir, filename)
         # Print information
         print("Device : " + args.dev_model)
@@ -143,8 +144,8 @@ def initdownload(client, filename):
     req = request.binaryinit(filename, client.nonce)
     resp = client.makereq("NF_DownloadBinaryInitForMass.do", req)
 
-def getbinaryfile(client, fw, model, region):
-    req = request.binaryinform(fw, model, region, client.nonce)
+def getbinaryfile(client, fw, model, region, imei):
+    req = request.binaryinform(fw, model, region, imei, client.nonce)
     resp = client.makereq("NF_DownloadBinaryInform.do", req)
     
     # Log the XML response directly
