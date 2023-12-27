@@ -37,15 +37,17 @@ pip3 install git+https://github.com/ananjaser1211/samloader.git
 ## Quick Usage
 Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
 
+IMEI / MODEL / Region need to match otherwise downloads wont go through.
+
 `-m <model> -r <region> checkupdate`: Check the latest firmware version
 
-`-m <model> -r <region> download (-O <output-dir> or -o <output-file>)`: Auto Download/Resume And Decrypt latest firmware version
+`-m <model> -r <region> -i <IMEI> download (-O <output-dir> or -o <output-file>)`: Auto Download/Resume And Decrypt latest firmware version
 
 ### Example
 ```
 $ samloader -m SM-F936B -r EUX checkupdate
 F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2
-$ samloader -m SM-F936B -r EUX download -O .
+$ samloader -m SM-F936B -r EUX -i <valid imei> download -O .
 downloading SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4
 ```
 
