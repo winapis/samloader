@@ -131,7 +131,6 @@ def auto_decrypt(args, out, filename):
         print("file {dec} already exists, refusing to auto-decrypt!")
         return
     print("\ndecyrpting", out)
-    # TODO: remove code duplication with decrypt command
     getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
     key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
     length = os.stat(out).st_size
@@ -139,6 +138,7 @@ def auto_decrypt(args, out, filename):
         with open(dec, "wb") as outf:
             crypt.decrypt_progress(inf, outf, key, length)
     os.remove(out)
+    print("\nFile", out + " Has been Decrypted.")
     log_to_file("Decryption completed.")
 
 def initdownload(client, filename):
