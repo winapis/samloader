@@ -20,7 +20,7 @@ def main():
     parser = argparse.ArgumentParser(description="Download and query firmware for Samsung devices.")
     parser.add_argument("-m", "--dev-model", help="device model", required=True)
     parser.add_argument("-r", "--dev-region", help="device region code", required=True)
-    parser.add_argument("-i", "--dev-imei", help="device imei", required=True)
+    parser.add_argument("-i", "--dev-imei", help="device imei")
     subparsers = parser.add_subparsers(dest="command")
     dload = subparsers.add_parser("download", help="download a firmware")
     dload.add_argument("-v", "--fw-ver", help="firmware version to download", required=False)
@@ -40,6 +40,9 @@ def main():
     # Log the command and arguments
     log_to_file(f"Command: {' '.join(os.sys.argv)}")
     if args.command == "download":
+        if not args.dev_imei:
+            print("imei is required for download, please set with --dev-imei")
+            return 1
         client = fusclient.FUSClient()
         # We can only download latest firmwares anyway
         args.fw_ver = versionfetch.getlatestver(args.dev_model, args.dev_region)
@@ -133,6 +136,9 @@ def main():
     elif args.command == "checkupdate":
         print(versionfetch.getlatestver(args.dev_model, args.dev_region))
     elif args.command == "decrypt":
+        if not args.dev_imei:
+            print("imei is required for download, please set with --dev-imei")
+            return 1
         getkey = crypt.getv4key if args.enc_ver == 4 else crypt.getv2key
         key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
         length = os.stat(args.in_file).st_size
