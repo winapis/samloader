@@ -92,17 +92,8 @@ def download(args):
         if os.path.isfile(out):
             print("FW Downloaded but not decrypted")
             log_to_file("FW Downloaded but not decrypted")
-            dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
-            print("\ndecyrpting", out)
-            # TODO: remove code duplication with decrypt command
-            getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
-            key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
-            length = os.stat(out).st_size
-            with open(out, "rb") as inf:
-                with open(dec, "wb") as outf:
-                    crypt.decrypt_progress(inf, outf, key, length)
-            os.remove(out)
-            log_to_file("FW Decrypted")
+            # Auto decrypt
+            auto_decrypt(args, out, filename)
         return
     fd = open(out, "ab" if args.resume else "wb")
     initdownload(client, filename)
@@ -132,22 +123,23 @@ def download(args):
     fd.close()
     log_to_file("Download completed.")
     # Auto decrypt
-    args.do_decrypt = True
-    if args.do_decrypt: # decrypt the file if needed
-        dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
-        if os.path.isfile(dec):
-            print("file {dec} already exists, refusing to auto-decrypt!")
-            return
-        print("\ndecyrpting", out)
-        # TODO: remove code duplication with decrypt command
-        getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
-        key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
-        length = os.stat(out).st_size
-        with open(out, "rb") as inf:
-            with open(dec, "wb") as outf:
-                crypt.decrypt_progress(inf, outf, key, length)
-        os.remove(out)
-        log_to_file("Decryption completed.")
+    auto_decrypt(args, out, filename)
+
+def auto_decrypt(args, out, filename):
+    dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
+    if os.path.isfile(dec):
+        print("file {dec} already exists, refusing to auto-decrypt!")
+        return
+    print("\ndecyrpting", out)
+    # TODO: remove code duplication with decrypt command
+    getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
+    key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
+    length = os.stat(out).st_size
+    with open(out, "rb") as inf:
+        with open(dec, "wb") as outf:
+            crypt.decrypt_progress(inf, outf, key, length)
+    os.remove(out)
+    log_to_file("Decryption completed.")
 
 def initdownload(client, filename):
     req = request.binaryinit(filename, client.nonce)
