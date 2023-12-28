@@ -15,11 +15,11 @@ from . import versionfetch
 # PKCS#7 unpad
 unpad = lambda d: d[:-d[-1]]
 
-def getv4key(version, model, region):
+def getv4key(version, model, region, imei):
     """ Retrieve the AES key for V4 encryption. """
     client = fusclient.FUSClient()
     version = versionfetch.normalizevercode(version)
-    req = request.binaryinform(version, model, region, client.nonce)
+    req = request.binaryinform(version, model, region, imei, client.nonce)
     resp = client.makereq("NF_DownloadBinaryInform.do", req)
     root = ET.fromstring(resp)
     fwver = root.find("./FUSBody/Results/LATEST_FW_VERSION/Data").text

@@ -78,7 +78,7 @@ def main():
                 print("\ndecyrpting", out)
                 # TODO: remove code duplication with decrypt command
                 getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
-                key = getkey(args.fw_ver, args.dev_model, args.dev_region)
+                key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
                 length = os.stat(out).st_size
                 with open(out, "rb") as inf:
                     with open(dec, "wb") as outf:
@@ -123,7 +123,7 @@ def main():
             print("\ndecyrpting", out)
             # TODO: remove code duplication with decrypt command
             getkey = crypt.getv2key if filename.endswith(".enc2") else crypt.getv4key
-            key = getkey(args.fw_ver, args.dev_model, args.dev_region)
+            key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
             length = os.stat(out).st_size
             with open(out, "rb") as inf:
                 with open(dec, "wb") as outf:
@@ -134,7 +134,7 @@ def main():
         print(versionfetch.getlatestver(args.dev_model, args.dev_region))
     elif args.command == "decrypt":
         getkey = crypt.getv4key if args.enc_ver == 4 else crypt.getv2key
-        key = getkey(args.fw_ver, args.dev_model, args.dev_region)
+        key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
         length = os.stat(args.in_file).st_size
         with open(args.in_file, "rb") as inf:
             with open(args.out_file, "wb") as outf:
