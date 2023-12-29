@@ -12,6 +12,7 @@ from . import request
 from . import crypt
 from . import fusclient
 from . import versionfetch
+from . import imei
 from .logging import log_to_file
 from .logging import log_response
 import xml.dom.minidom
@@ -20,7 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description="Download and query firmware for Samsung devices.")
     parser.add_argument("-m", "--dev-model", help="device model", required=True)
     parser.add_argument("-r", "--dev-region", help="device region code", required=True)
-    parser.add_argument("-i", "--dev-imei", help="device imei")
+    parser.add_argument("-i", "--dev-imei", help="Device IMEI or First 8 digits (TAC Index) to attempt generating a valid IMEI")
     subparsers = parser.add_subparsers(dest="command")
     dload = subparsers.add_parser("download", help="download a firmware")
     dload.add_argument("-v", "--fw-ver", help="firmware version to download", required=False)
@@ -40,16 +41,12 @@ def main():
     # Log the command and arguments
     log_to_file(f"Command: {' '.join(os.sys.argv)}")
     if args.command == "download":
-        if not args.dev_imei:
-            print("imei is required for download, please set with --dev-imei")
-            return 1
+        imei_parser(args)
         download(args)
     elif args.command == "checkupdate":
         print(versionfetch.getlatestver(args.dev_model, args.dev_region))
     elif args.command == "decrypt":
-        if not args.dev_imei:
-            print("imei is required for download, please set with --dev-imei")
-            return 1
+        imei_parser(args)
         getkey = crypt.getv4key if args.enc_ver == 4 else crypt.getv2key
         key = getkey(args.fw_ver, args.dev_model, args.dev_region, args.dev_imei)
         length = os.stat(args.in_file).st_size
@@ -124,6 +121,38 @@ def download(args):
     log_to_file("Download completed.")
     # Auto decrypt
     auto_decrypt(args, out, filename)
+
+def imei_parser(args):
+    if args.dev_imei:
+        if len(args.dev_imei) == 8:
+            for attempt in range(1, 6):  # Try 5 times to generate a valid IMEI
+                result = imei.generate_random_imei(args.dev_imei)
+                client = fusclient.FUSClient()
+                fw_ver = versionfetch.getlatestver(args.dev_model, args.dev_region)
+                try:
+                    req = request.binaryinform(fw_ver, args.dev_model, args.dev_region, result, client.nonce)
+                    resp = client.makereq("NF_DownloadBinaryInform.do", req)
+                    root = ET.fromstring(resp)
+                    status = int(root.find("./FUSBody/Results/Status").text)
+                    if status == 200:
+                        print(f"Attempt {attempt}: Valid IMEI Found: {result}")
+                        args.dev_imei = result
+                        break
+                    else:
+                        print(f"Attempt {attempt}: IMEI {result} is invalid. FUS Returned : {status}")
+                except Exception as e:
+                    print(f"Attempt {attempt}: Error during binary file download: {e}")
+            else:
+                print("Unable to find a valid IMEI after 5 tries. Re-run Samloader to try again or pass a known valid IMEI")
+                exit()
+        elif len(args.dev_imei) == 15:
+            print("IMEI is provided: " + args.dev_imei)
+        else:
+            print("Invalid IMEI length. Please provide either 8 or 15 digits.")
+            exit()
+    else:
+        print("imei is required for download, please set a valid 15 digit IMEI or 8 Digit Tac Index to try generating one with --dev-imei")
+        exit()
 
 def auto_decrypt(args, out, filename):
     dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
