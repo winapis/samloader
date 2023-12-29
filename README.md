@@ -14,6 +14,7 @@ pip3 install git+https://github.com/ananjaser1211/samloader.git
 Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
 
 1. IMEI/TAC and MODEL need to match otherwise downloads/decrypt wont be allowed.
+1. Devices with No IMEI or devices that DONT accept IMEIs can use Serial Number instead with option -s
 1. TAC Index is the first 8 Digits of the device IMEI
 1. -i can be either a 15 Digit IMEI or 8 Digit TAC Index
 1. when TAC Index is used, samloader will attempt to generate a valid fake IMEI and pass it to FUS
