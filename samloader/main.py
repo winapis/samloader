@@ -22,6 +22,7 @@ def main():
     parser.add_argument("-m", "--dev-model", help="device model", required=True)
     parser.add_argument("-r", "--dev-region", help="device region code", required=True)
     parser.add_argument("-i", "--dev-imei", help="Device IMEI or First 8 digits (TAC Index) to attempt generating a valid IMEI")
+    parser.add_argument("-s", "--dev-serial", help="Device Serial Number if it does not have an IMEI number")
     subparsers = parser.add_subparsers(dest="command")
     dload = subparsers.add_parser("download", help="download a firmware")
     dload.add_argument("-v", "--fw-ver", help="firmware version to download", required=False)
@@ -143,15 +144,18 @@ def imei_parser(args):
                 except Exception as e:
                     print(f"Attempt {attempt}: Error during binary file download: {e}")
             else:
-                print("Unable to find a valid IMEI after 5 tries. Re-run Samloader to try again or pass a known valid IMEI")
+                print("Unable to find a valid IMEI after 5 tries. Re-run Samloader to try again or pass a known valid IMEI or Serial Number")
                 exit()
         elif len(args.dev_imei) == 15:
             print("IMEI is provided: " + args.dev_imei)
         else:
             print("Invalid IMEI length. Please provide either 8 or 15 digits.")
             exit()
+    elif args.dev_serial:
+        print("Serial Number is provided: " + args.dev_serial)
+        args.dev_imei = args.dev_serial
     else:
-        print("imei is required for download, please set a valid 15 digit IMEI or 8 Digit Tac Index to try generating one with --dev-imei")
+        print("IMEI or Serial Number is required for download\nplease set a valid 15 digit IMEI or 8 Digit Tac Index to try generating one with -i / --dev-imei\nOr set a valid Serial Number with -s / --dev-serial")
         exit()
 
 def auto_decrypt(args, out, filename):
