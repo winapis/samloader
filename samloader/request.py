@@ -53,7 +53,8 @@ def binaryinform(fwv: str, model: str, region: str, imei: str, nonce: str) -> st
 
     additional_fields = {}
     if region == "EUX":
-        selected_region = select_region()
+        # By-pass region selector for now
+        selected_region = "DE"
         additional_fields = {
             "DEVICE_AID_CODE": region,
             "DEVICE_CC_CODE": selected_region,
