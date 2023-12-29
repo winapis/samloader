@@ -32,7 +32,7 @@ def generate_imei_numbers(tac, num_generated):
         rng_second_digit = random.randint(4, 9)
         rng_third_digit = random.choice([0, 1, 3, 5, 6, 7])
         rng_fourth_digit = random.randint(0, 9)
-        rng_fifth_sixth = random.randint(0, 99)
+        rng_fifth_sixth = random.randint(00, 99)
 
         # Combine TAC and RNG
         tac_rng = "{}{:01d}{:01d}{:01d}{:01d}{:02d}".format(
