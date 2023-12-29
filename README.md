@@ -1,7 +1,45 @@
 # samloader
-Download firmware for Samsung devices (without any extra Windows drivers).
+1. Download firmware for Samsung devices (without any extra Windows drivers).
+1. Supports Standard CSCs and EUX/EUY Regions
+1. Updated to handle recent FUS Changes
+1. Includes an IMEI Generator to satisfy FUS requests
 
-## Project is Active.
+## Installation
+```
+pip3 uninstall samloader (if previously installed)
+pip3 install git+https://github.com/ananjaser1211/samloader.git
+```
+
+## Quick Usage and Notes
+Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
+
+1. IMEI/TAC and MODEL need to match otherwise downloads/decrypt wont be allowed.
+1. TAC Index is the first 8 Digits of the device IMEI
+1. -i can be either a 15 Digit IMEI or 8 Digit TAC Index
+1. when TAC Index is used, samloader will attempt to generate a valid fake IMEI and pass it to FUS
+1. Its wise to store valid IMEIs in a list for later use, the generator will only perform 5 attempts per run
+1. While its not perfect, this is in place to protect your own IMEIs incase samsung has other plans for us
+1. download and decrypt functions support the IMEI/TAC Generator, Checkupdate does not require IMEI/TAC
+
+`-m <model> -r <region> checkupdate`: Check the latest firmware version
+
+`-m <model> -r <region> -i <IMEI or TAC> download (-O <output-dir> or -o <output-file>)`: Auto Download/Resume And Decrypt latest firmware version
+
+`-m <model> -r <region> decrypt -v <version> -i <IMEI or TAC> -i <input-file> -o <output-file>`: Decrypt encrypted firmwares
+
+### Example
+```
+$ samloader -m SM-F936B -r EUX checkupdate
+F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2
+$ samloader -m SM-F936B -r EUX -i <IMEI/TAC> download -O .
+downloading SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4
+$ samloader -m SM-F936B -r EUX -i <IMEI/TAC> decrypt -v F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2 -i SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4 -o SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip
+```
+
+## Notes
+This project was formerly hosted at `nlscc/samloader`, and has moved to `ananjaser1211/samloader`.
+
+## Project is Active on this Fork.
 Former deprecation notice. Please see [STATEMENT.pdf](https://github.com/samloader/samloader/blob/master/STATEMENT.pdf).
 
 ### Licensing statement, June 19 2023
@@ -27,48 +65,3 @@ same.
 For the avoidance of doubt this statement does not apply to commits authored by
 people who are not nlscc.
 ```
-
-## Installation
-```
-pip3 uninstall samloader (if previously installed)
-pip3 install git+https://github.com/ananjaser1211/samloader.git
-```
-
-## Quick Usage
-Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
-
-IMEI / MODEL / Region need to match otherwise downloads wont go through.
-
-`-m <model> -r <region> checkupdate`: Check the latest firmware version
-
-`-m <model> -r <region> -i <IMEI> download (-O <output-dir> or -o <output-file>)`: Auto Download/Resume And Decrypt latest firmware version
-
-### Example
-```
-$ samloader -m SM-F936B -r EUX checkupdate
-F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2
-$ samloader -m SM-F936B -r EUX -i <valid imei> download -O .
-downloading SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4
-```
-
-## Old Usage
-Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `samloader (command) --help` for help.
-
-`-m <model> -r <region> checkupdate`: Check the latest firmware version
-
-`-m <model> -r <region> download -v <version> (-O <output-dir> or -o <output-file>)`: Download the specified firmware version for a given phone and region to a specified file or directory
-
-`-m <model> -r <region> decrypt -v <version> -V <enc-version> -i <input-file> -o <output-file>`: Decrypt encrypted firmware
-### Example
-```
-$ samloader -m GT-I8190N -r BTU checkupdate
-I8190NXXAMJ2/I8190NBTUAMJ1/I8190NXXAMJ2/I8190NXXAMJ2
-$ samloader -m GT-I8190N -r BTU download -v I8190NXXAMJ2/I8190NBTUAMJ1/I8190NXXAMJ2/I8190NXXAMJ2 -O .
-downloading GT-I8190N_BTU_1_20131118100230_9ae3yzkqmu_fac.zip.enc2
-[################################] 10570/10570 - 00:02:02
-$ samloader -m GT-I8190N -r BTU decrypt -v I8190NXXAMJ2/I8190NBTUAMJ1/I8190NXXAMJ2/I8190NXXAMJ2 -V 2 -i GT-I8190N_BTU_1_20131118100230_9ae3yzkqmu_fac.zip.enc2 -o GT-I8190N_BTU_1_20131118100230_9ae3yzkqmu_fac.zip
-[################################] 169115/169115 - 00:00:08
-```
-## Notes
-This project was formerly hosted at `nlscc/samloader`, and has moved to `ananjaser1211/samloader`.
-EUX And EUY Firmwares are now supported.
