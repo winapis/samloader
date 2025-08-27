@@ -26,6 +26,8 @@ Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `saml
 
 `-m <model> -r <region> -i <IMEI or TAC> download (-O <output-dir> or -o <output-file>)`: Auto Download/Resume And Decrypt latest firmware version
 
+`-m <model> -r <region> -i <IMEI or TAC> download --use-aria2c (-O <output-dir> or -o <output-file>)`: Download using aria2c for faster multi-connection downloads
+
 `-m <model> -r <region> decrypt -v <version> -i <IMEI or TAC> -i <input-file> -o <output-file>`: Decrypt encrypted firmwares
 
 ### Example
@@ -34,6 +36,8 @@ $ samloader -m SM-F936B -r EUX checkupdate
 F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2
 $ samloader -m SM-F936B -r EUX -i <IMEI/TAC> download -O .
 downloading SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4
+$ samloader -m SM-F936B -r EUX -i <IMEI/TAC> download --use-aria2c -O .
+Using aria2c for download...
 $ samloader -m SM-F936B -r EUX -i <IMEI/TAC> decrypt -v F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2 -i SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4 -o SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip
 ```
 

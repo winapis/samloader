@@ -6,6 +6,7 @@ import os
 import base64
 import xml.etree.ElementTree as ET
 import datetime
+import subprocess
 from tqdm import tqdm
 
 from . import request
@@ -29,6 +30,7 @@ def main():
     dload.add_argument("-R", "--resume", help="resume an unfinished download", action="store_true")
     dload.add_argument("-M", "--show-md5", help="print the expected MD5 hash of the downloaded file", action="store_true")
     dload.add_argument("-D", "--do-decrypt", help="auto-decrypt the downloaded file after downloading", action="store_true")
+    dload.add_argument("--use-aria2c", help="use aria2c for downloading firmware", action="store_true")
     dload_out = dload.add_mutually_exclusive_group(required=True)
     dload_out.add_argument("-O", "--out-dir", help="output the server filename to the specified directory")
     dload_out.add_argument("-o", "--out-file", help="output to the specified file")
@@ -54,6 +56,44 @@ def main():
         with open(args.in_file, "rb") as inf:
             with open(args.out_file, "wb") as outf:
                 crypt.decrypt_progress(inf, outf, key, length)
+
+def download_with_aria2c(client, path, filename, output_path, resume=False):
+    """Download firmware using aria2c with specified parameters."""
+    # Generate authorization headers like the original downloadfile method
+    authv = 'FUS nonce="' + client.encnonce + '", signature="' + client.auth \
+        + '", nc="", type="", realm="", newauth="1"'
+    
+    url = f"http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file={path}{filename}"
+    
+    aria2c_cmd = [
+        "aria2c",
+        "-c",  # Continue downloading partially downloaded files
+        "-s16",  # Split into 16 connections per server
+        "-x16",  # Maximum connections per server is 16
+        "-m10",  # Timeout in seconds is 10
+        "--console-log-level=warn",  # Only show warning level logs
+        "--summary-interval=0",  # Disable summary interval
+        "--check-certificate=false",  # Don't verify SSL certificates
+        f"--header=Authorization: {authv}",  # Add authorization header
+        f"--header=User-Agent: Kies2.0_FUS",  # Add user agent header
+        "-o", os.path.basename(output_path),  # Output filename
+        "-d", os.path.dirname(output_path),  # Output directory
+        url
+    ]
+    
+    log_to_file(f"Executing aria2c command: {' '.join(aria2c_cmd)}")
+    
+    try:
+        # Run aria2c and capture output
+        result = subprocess.run(aria2c_cmd, check=True, capture_output=True, text=True)
+        log_to_file("aria2c download completed successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        log_to_file(f"aria2c download failed: {e}")
+        log_to_file(f"aria2c stderr: {e.stderr}")
+        raise Exception(f"aria2c download failed: {e.stderr}")
+    except FileNotFoundError:
+        raise Exception("aria2c not found. Please install aria2c to use this feature.")
 
 def download(args):
     client = fusclient.FUSClient()
@@ -93,6 +133,24 @@ def download(args):
             # Auto decrypt
             auto_decrypt(args, out, filename)
         return
+    
+    # Use aria2c for download if requested
+    if args.use_aria2c:
+        print("Using aria2c for download...")
+        log_to_file("Using aria2c for download")
+        
+        # Initialize download with Samsung FUS
+        initdownload(client, filename)
+        
+        # Download with aria2c
+        download_with_aria2c(client, path, filename, out, args.resume)
+        
+        log_to_file("Download completed.")
+        # Auto decrypt
+        auto_decrypt(args, out, filename)
+        return
+    
+    # Original download method
     fd = open(out, "ab" if args.resume else "wb")
     initdownload(client, filename)
     r = client.downloadfile(path+filename, dloffset)
