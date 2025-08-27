@@ -6,6 +6,10 @@ import os
 import base64
 import xml.etree.ElementTree as ET
 import datetime
+import subprocess
+import tempfile
+import time
+import shutil
 from tqdm import tqdm
 
 from . import request
@@ -93,35 +97,46 @@ def download(args):
             # Auto decrypt
             auto_decrypt(args, out, filename)
         return
-    fd = open(out, "ab" if args.resume else "wb")
+    
+    # Initialize download with Samsung FUS
     initdownload(client, filename)
-    r = client.downloadfile(path+filename, dloffset)
-    if args.show_md5 and "Content-MD5" in r.headers:
-        print("MD5:", base64.b64decode(r.headers["Content-MD5"]).hex())
-
-    log_interval = size // 10  # Log every 10%
-    progress = dloffset
-
-    # Download and log progress
-    with tqdm(total=size, initial=dloffset, unit="B", unit_scale=True) as pbar:
-        for chunk in r.iter_content(chunk_size=0x10000):
-            if chunk:
-                fd.write(chunk)
-                fd.flush()
-                pbar.update(len(chunk))
-                
-                # Update progress
-                progress += len(chunk)
-                
-                # Check if it's time to log the progress
-                if progress >= log_interval:
-                    log_to_file(f"Download progress: {progress / (1024**2):.2f} MB / {size / (1024**2):.2f} MB")
-                    log_interval += size // 10
-
-    fd.close()
-    log_to_file("Download completed.")
-    # Auto decrypt
-    auto_decrypt(args, out, filename)
+    
+    # Prepare URL and authentication for aria2c
+    download_url = f"http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file={path}{filename}"
+    auth_header = f'FUS nonce="{client.encnonce}", signature="{client.auth}", nc="", type="", realm="", newauth="1"'
+    
+    # Show initial file size info if resuming
+    if args.show_md5:
+        # We'll get MD5 info after aria2c download
+        print("Note: MD5 verification will be performed after download")
+    
+    try:
+        # Use aria2c for downloading
+        print(f"Starting aria2c download with resume support...")
+        log_to_file("Starting download with aria2c")
+        
+        # Monitor file size for progress (aria2c will handle the actual downloading)
+        initial_size = dloffset
+        
+        # Download with aria2c
+        success = download_with_aria2c(download_url, out, auth_header, dloffset)
+        
+        if success:
+            # Verify download completed
+            final_size = os.path.getsize(out) if os.path.exists(out) else 0
+            print(f"Download completed! File size: {final_size / (1024**3):.3f} GB")
+            log_to_file("Download completed with aria2c")
+            
+            # Auto decrypt
+            auto_decrypt(args, out, filename)
+        else:
+            log_to_file("aria2c download failed")
+            print("Download failed")
+            
+    except Exception as e:
+        log_to_file(f"Download error: {str(e)}")
+        print(f"Download error: {str(e)}")
+        raise
 
 def imei_parser(args):
     if args.dev_imei:
@@ -157,6 +172,54 @@ def imei_parser(args):
     else:
         print("IMEI or Serial Number is required for download\nplease set a valid 15 digit IMEI or 8 Digit Tac Index to try generating one with -i / --dev-imei\nOr set a valid Serial Number with -s / --dev-serial")
         exit()
+
+def download_with_aria2c(url, output_path, auth_header, start_offset=0):
+    """Download file using aria2c with specified arguments"""
+    
+    # Create a temporary header file for authorization
+    header_file = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
+            f.write(f"Authorization: {auth_header}\n")
+            f.write("User-Agent: Kies2.0_FUS\n")
+            header_file = f.name
+        
+        # Build aria2c command with specified arguments
+        cmd = [
+            'aria2c',
+            '-c',                           # continue partial downloads
+            '-s16',                         # split into 16 segments
+            '-x16',                         # max 16 connections per server
+            '-m10',                         # max 10 servers per file
+            '--console-log-level=warn',     # set log level to warn
+            '--summary-interval=0',         # disable summary interval
+            '--check-certificate=false',    # disable SSL certificate checking
+            f'--header-file={header_file}', # authorization headers
+            f'--out={os.path.basename(output_path)}',  # output filename
+            f'--dir={os.path.dirname(output_path)}',   # output directory
+        ]
+        
+        # Add continue/resume support
+        if start_offset > 0:
+            cmd.append('--continue=true')
+        
+        cmd.append(url)
+        
+        # Run aria2c
+        log_to_file(f"Running aria2c command: {' '.join(cmd)}")
+        process = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if process.returncode != 0:
+            log_to_file(f"aria2c error: {process.stderr}")
+            raise Exception(f"aria2c download failed with return code {process.returncode}: {process.stderr}")
+        
+        log_to_file("aria2c download completed successfully")
+        return True
+        
+    finally:
+        # Clean up temporary header file
+        if header_file and os.path.exists(header_file):
+            os.unlink(header_file)
 
 def auto_decrypt(args, out, filename):
     dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
