@@ -70,9 +70,10 @@ def download_with_aria2c(client, path, filename, output_path, resume=False):
         "-c",  # Continue downloading partially downloaded files
         "-s16",  # Split into 16 connections per server
         "-x16",  # Maximum connections per server is 16
-        "-m10",  # Timeout in seconds is 10
+        "-t", "60",  # Timeout in seconds - increased for large downloads
         "--console-log-level=info",  # Show progress and download information
         "--summary-interval=1",  # Show summary every 1 second
+        "--download-result=default",  # Show download results
         "--check-certificate=false",  # Don't verify SSL certificates
         f"--header=Authorization: {authv}",  # Add authorization header
         f"--header=User-Agent: Kies2.0_FUS",  # Add user agent header
@@ -84,8 +85,13 @@ def download_with_aria2c(client, path, filename, output_path, resume=False):
     log_to_file(f"Executing aria2c command: {' '.join(aria2c_cmd)}")
     
     try:
-        # Run aria2c without capturing output to show progress to user
-        result = subprocess.run(aria2c_cmd, check=True)
+        # Ensure unbuffered output for better progress display
+        env = os.environ.copy()
+        env['PYTHONUNBUFFERED'] = '1'
+        
+        # Run aria2c with proper output handling to show progress to user
+        print("aria2c download started - progress will be shown below:")
+        result = subprocess.run(aria2c_cmd, check=True, env=env)
         log_to_file("aria2c download completed successfully")
         return True
     except subprocess.CalledProcessError as e:
