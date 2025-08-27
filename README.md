@@ -5,7 +5,20 @@
 1. Includes an IMEI Generator to satisfy FUS requests
 
 ## Installation
+
+### Requirements
+- aria2c (for fast multi-connection downloads)
+
+### Ubuntu/Debian:
+```bash
+sudo apt install aria2
+pip3 uninstall samloader (if previously installed)
+pip3 install git+https://github.com/ananjaser1211/samloader.git
 ```
+
+### Other systems:
+Install aria2c using your package manager, then:
+```bash
 pip3 uninstall samloader (if previously installed)
 pip3 install git+https://github.com/ananjaser1211/samloader.git
 ```
