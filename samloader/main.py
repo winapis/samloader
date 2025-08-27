@@ -7,6 +7,7 @@ import base64
 import xml.etree.ElementTree as ET
 import datetime
 import subprocess
+import re
 from tqdm import tqdm
 
 from . import request
@@ -17,6 +18,44 @@ from . import imei
 from .logging import log_to_file
 from .logging import log_response
 import xml.dom.minidom
+
+def validate_aria2c_args(args):
+    """Validate aria2c arguments to ensure they are correct."""
+    errors = []
+    
+    # Validate max connections (reasonable range)
+    if args.aria2c_max_connections < 1 or args.aria2c_max_connections > 128:
+        errors.append("aria2c-max-connections must be between 1 and 128")
+    
+    # Validate split connections 
+    if args.aria2c_split is not None and (args.aria2c_split < 1 or args.aria2c_split > args.aria2c_max_connections):
+        errors.append(f"aria2c-split must be between 1 and {args.aria2c_max_connections}")
+    
+    # Validate min split size format (must be number followed by optional K/M)
+    if not re.match(r'^\d+[KM]?$', args.aria2c_min_split_size):
+        errors.append("aria2c-min-split-size must be a number optionally followed by K or M (e.g., 1M, 512K)")
+    
+    # Validate max tries
+    if args.aria2c_max_tries < 0 or args.aria2c_max_tries > 100:
+        errors.append("aria2c-max-tries must be between 0 and 100")
+    
+    # Validate retry wait
+    if args.aria2c_retry_wait < 0 or args.aria2c_retry_wait > 3600:
+        errors.append("aria2c-retry-wait must be between 0 and 3600 seconds")
+    
+    # Validate timeout
+    if args.aria2c_timeout < 1 or args.aria2c_timeout > 3600:
+        errors.append("aria2c-timeout must be between 1 and 3600 seconds")
+    
+    # Validate lowest speed limit format
+    if not re.match(r'^\d+[KM]?$', args.aria2c_lowest_speed_limit):
+        errors.append("aria2c-lowest-speed-limit must be a number optionally followed by K or M (e.g., 100K, 1M)")
+    
+    if errors:
+        print("Invalid aria2c arguments:")
+        for error in errors:
+            print(f"  - {error}")
+        exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Download and query firmware for Samsung devices.")
@@ -31,6 +70,22 @@ def main():
     dload.add_argument("-M", "--show-md5", help="print the expected MD5 hash of the downloaded file", action="store_true")
     dload.add_argument("-D", "--do-decrypt", help="auto-decrypt the downloaded file after downloading", action="store_true")
     dload.add_argument("--use-aria2c", help="use aria2c for downloading firmware", action="store_true")
+    dload.add_argument("--aria2c-max-connections", type=int, default=32, metavar="N",
+                       help="maximum connections per server for aria2c (default: 32 for large files)")
+    dload.add_argument("--aria2c-split", type=int, metavar="N",
+                       help="number of connections to split download (default: auto-calculated based on file size)")
+    dload.add_argument("--aria2c-min-split-size", default="1M", metavar="SIZE",
+                       help="minimum size to split (default: 1M, e.g., 5M, 10M)")
+    dload.add_argument("--aria2c-max-tries", type=int, default=10, metavar="N",
+                       help="maximum number of retries (default: 10)")
+    dload.add_argument("--aria2c-retry-wait", type=int, default=10, metavar="SEC",
+                       help="seconds to wait between retries (default: 10)")
+    dload.add_argument("--aria2c-timeout", type=int, default=60, metavar="SEC",
+                       help="timeout in seconds (default: 60)")
+    dload.add_argument("--aria2c-lowest-speed-limit", default="50K", metavar="SPEED",
+                       help="minimum download speed, restart if slower (default: 50K, e.g., 100K, 1M)")
+    dload.add_argument("--aria2c-file-allocation", choices=["none", "prealloc", "falloc"], default="none",
+                       help="file allocation method (default: none for faster start)")
     dload_out = dload.add_mutually_exclusive_group(required=True)
     dload_out.add_argument("-O", "--out-dir", help="output the server filename to the specified directory")
     dload_out.add_argument("-o", "--out-file", help="output to the specified file")
@@ -57,20 +112,40 @@ def main():
             with open(args.out_file, "wb") as outf:
                 crypt.decrypt_progress(inf, outf, key, length)
 
-def download_with_aria2c(client, path, filename, output_path, resume=False):
-    """Download firmware using aria2c with specified parameters."""
+def download_with_aria2c(client, path, filename, output_path, file_size, args):
+    """Download firmware using aria2c with optimized parameters for large files."""
     # Generate authorization headers like the original downloadfile method
     authv = 'FUS nonce="' + client.encnonce + '", signature="' + client.auth \
         + '", nc="", type="", realm="", newauth="1"'
     
     url = f"http://cloud-neofussvr.samsungmobile.com/NF_DownloadBinaryForMass.do?file={path}{filename}"
     
+    # Calculate optimal split based on file size if not specified
+    if args.aria2c_split is None:
+        # For very large files (>5GB), use more connections
+        if file_size > 5 * (1024**3):  # 5GB
+            optimal_split = min(args.aria2c_max_connections, 64)
+        elif file_size > 1 * (1024**3):  # 1GB  
+            optimal_split = min(args.aria2c_max_connections, 32)
+        else:
+            optimal_split = min(args.aria2c_max_connections, 16)
+    else:
+        optimal_split = args.aria2c_split
+    
+    # Ensure split doesn't exceed max connections
+    optimal_split = min(optimal_split, args.aria2c_max_connections)
+    
     aria2c_cmd = [
         "aria2c",
         "-c",  # Continue downloading partially downloaded files
-        "-s16",  # Split into 16 connections per server
-        "-x16",  # Maximum connections per server is 16
-        "-m10",  # Timeout in seconds is 10
+        f"-s{optimal_split}",  # Split connections based on file size
+        f"-x{args.aria2c_max_connections}",  # Maximum connections per server
+        f"-m{args.aria2c_max_tries}",  # Maximum number of retries
+        f"-t{args.aria2c_timeout}",  # Timeout in seconds
+        f"--retry-wait={args.aria2c_retry_wait}",  # Wait between retries
+        f"--min-split-size={args.aria2c_min_split_size}",  # Minimum split size
+        f"--lowest-speed-limit={args.aria2c_lowest_speed_limit}",  # Minimum speed
+        f"--file-allocation={args.aria2c_file_allocation}",  # File allocation method
         "--console-log-level=info",  # Show progress and download information
         "--summary-interval=1",  # Show summary every 1 second
         "--check-certificate=false",  # Don't verify SSL certificates
@@ -82,6 +157,11 @@ def download_with_aria2c(client, path, filename, output_path, resume=False):
     ]
     
     log_to_file(f"Executing aria2c command: {' '.join(aria2c_cmd)}")
+    
+    # Log configuration summary
+    log_to_file(f"aria2c optimizations: connections={optimal_split}/{args.aria2c_max_connections}, "
+               f"min_split={args.aria2c_min_split_size}, timeout={args.aria2c_timeout}s, "
+               f"retries={args.aria2c_max_tries}, min_speed={args.aria2c_lowest_speed_limit}")
     
     try:
         # Run aria2c without capturing output to show progress to user
@@ -135,14 +215,20 @@ def download(args):
     
     # Use aria2c for download if requested
     if args.use_aria2c:
+        # Validate aria2c arguments first
+        validate_aria2c_args(args)
+        
         print("Using aria2c for download...")
+        print(f"Optimized for large files: {args.aria2c_max_connections} max connections, {args.aria2c_split or 'auto'} split")
         log_to_file("Using aria2c for download")
+        log_to_file(f"aria2c config: max_conn={args.aria2c_max_connections}, split={args.aria2c_split or 'auto'}, "
+                   f"timeout={args.aria2c_timeout}s, retries={args.aria2c_max_tries}")
         
         # Initialize download with Samsung FUS
         initdownload(client, filename)
         
-        # Download with aria2c
-        download_with_aria2c(client, path, filename, out, args.resume)
+        # Download with aria2c using optimized settings
+        download_with_aria2c(client, path, filename, out, size, args)
         
         log_to_file("Download completed.")
         # Auto decrypt

@@ -28,6 +28,16 @@ Run with `samloader` or `python3 -m samloader`. See `samloader --help` and `saml
 
 `-m <model> -r <region> -i <IMEI or TAC> download --use-aria2c (-O <output-dir> or -o <output-file>)`: Download using aria2c for faster multi-connection downloads
 
+**Advanced aria2c options for optimizing large file downloads (26GB+):**
+- `--aria2c-max-connections N`: Maximum connections per server (default: 32)
+- `--aria2c-split N`: Number of connections to split download (default: auto-calculated based on file size)
+- `--aria2c-min-split-size SIZE`: Minimum size to split (default: 1M, e.g., 5M, 10M)
+- `--aria2c-max-tries N`: Maximum number of retries (default: 10)
+- `--aria2c-retry-wait SEC`: Seconds to wait between retries (default: 10)
+- `--aria2c-timeout SEC`: Timeout in seconds (default: 60)
+- `--aria2c-lowest-speed-limit SPEED`: Minimum download speed, restart if slower (default: 50K)
+- `--aria2c-file-allocation {none,prealloc,falloc}`: File allocation method (default: none)
+
 `-m <model> -r <region> decrypt -v <version> -i <IMEI or TAC> -i <input-file> -o <output-file>`: Decrypt encrypted firmwares
 
 ### Example
@@ -38,6 +48,11 @@ $ samloader -m SM-F936B -r EUX -i <IMEI/TAC> download -O .
 downloading SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4
 $ samloader -m SM-F936B -r EUX -i <IMEI/TAC> download --use-aria2c -O .
 Using aria2c for download...
+Optimized for large files: 32 max connections, auto split
+
+# For very large files (26GB+), you can further optimize:
+$ samloader -m SM-F936B -r EUX -i <IMEI/TAC> download --use-aria2c --aria2c-max-connections 64 --aria2c-split 64 --aria2c-lowest-speed-limit 1M -O .
+
 $ samloader -m SM-F936B -r EUX -i <IMEI/TAC> decrypt -v F936BXXS4DWJ2/F936BOXM4DWH7/F936BXXS4DWJ2/F936BXXS4DWJ2 -i SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip.enc4 -o SM-F936B_2_20231031184951_xuh31ziqh0_fac.zip
 ```
 
