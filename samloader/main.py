@@ -71,8 +71,8 @@ def download_with_aria2c(client, path, filename, output_path, resume=False):
         "-s16",  # Split into 16 connections per server
         "-x16",  # Maximum connections per server is 16
         "-m10",  # Timeout in seconds is 10
-        "--console-log-level=warn",  # Only show warning level logs
-        "--summary-interval=0",  # Disable summary interval
+        "--console-log-level=info",  # Show progress and download information
+        "--summary-interval=1",  # Show summary every 1 second
         "--check-certificate=false",  # Don't verify SSL certificates
         f"--header=Authorization: {authv}",  # Add authorization header
         f"--header=User-Agent: Kies2.0_FUS",  # Add user agent header
@@ -84,14 +84,13 @@ def download_with_aria2c(client, path, filename, output_path, resume=False):
     log_to_file(f"Executing aria2c command: {' '.join(aria2c_cmd)}")
     
     try:
-        # Run aria2c and capture output
-        result = subprocess.run(aria2c_cmd, check=True, capture_output=True, text=True)
+        # Run aria2c without capturing output to show progress to user
+        result = subprocess.run(aria2c_cmd, check=True)
         log_to_file("aria2c download completed successfully")
         return True
     except subprocess.CalledProcessError as e:
         log_to_file(f"aria2c download failed: {e}")
-        log_to_file(f"aria2c stderr: {e.stderr}")
-        raise Exception(f"aria2c download failed: {e.stderr}")
+        raise Exception(f"aria2c download failed with return code {e.returncode}")
     except FileNotFoundError:
         raise Exception("aria2c not found. Please install aria2c to use this feature.")
 
