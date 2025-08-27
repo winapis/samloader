@@ -176,50 +176,38 @@ def imei_parser(args):
 def download_with_aria2c(url, output_path, auth_header, start_offset=0):
     """Download file using aria2c with specified arguments"""
     
-    # Create a temporary header file for authorization
-    header_file = None
-    try:
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
-            f.write(f"Authorization: {auth_header}\n")
-            f.write("User-Agent: Kies2.0_FUS\n")
-            header_file = f.name
-        
-        # Build aria2c command with specified arguments
-        cmd = [
-            'aria2c',
-            '-c',                           # continue partial downloads
-            '-s16',                         # split into 16 segments
-            '-x16',                         # max 16 connections per server
-            '-m10',                         # max 10 servers per file
-            '--console-log-level=warn',     # set log level to warn
-            '--summary-interval=0',         # disable summary interval
-            '--check-certificate=false',    # disable SSL certificate checking
-            f'--header-file={header_file}', # authorization headers
-            f'--out={os.path.basename(output_path)}',  # output filename
-            f'--dir={os.path.dirname(output_path)}',   # output directory
-        ]
-        
-        # Add continue/resume support
-        if start_offset > 0:
-            cmd.append('--continue=true')
-        
-        cmd.append(url)
-        
-        # Run aria2c
-        log_to_file(f"Running aria2c command: {' '.join(cmd)}")
-        process = subprocess.run(cmd, capture_output=True, text=True)
-        
-        if process.returncode != 0:
-            log_to_file(f"aria2c error: {process.stderr}")
-            raise Exception(f"aria2c download failed with return code {process.returncode}: {process.stderr}")
-        
-        log_to_file("aria2c download completed successfully")
-        return True
-        
-    finally:
-        # Clean up temporary header file
-        if header_file and os.path.exists(header_file):
-            os.unlink(header_file)
+    # Build aria2c command with specified arguments
+    cmd = [
+        'aria2c',
+        '-c',                           # continue partial downloads
+        '-s16',                         # split into 16 segments
+        '-x16',                         # max 16 connections per server
+        '-m10',                         # max 10 servers per file
+        '--console-log-level=warn',     # set log level to warn
+        '--summary-interval=0',         # disable summary interval
+        '--check-certificate=false',    # disable SSL certificate checking
+        f'--header=Authorization: {auth_header}',  # authorization header
+        f'--header=User-Agent: Kies2.0_FUS',      # user agent header
+        f'--out={os.path.basename(output_path)}',  # output filename
+        f'--dir={os.path.dirname(output_path)}',   # output directory
+    ]
+    
+    # Add continue/resume support
+    if start_offset > 0:
+        cmd.append('--continue=true')
+    
+    cmd.append(url)
+    
+    # Run aria2c
+    log_to_file(f"Running aria2c command: {' '.join(cmd)}")
+    process = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if process.returncode != 0:
+        log_to_file(f"aria2c error: {process.stderr}")
+        raise Exception(f"aria2c download failed with return code {process.returncode}: {process.stderr}")
+    
+    log_to_file("aria2c download completed successfully")
+    return True
 
 def auto_decrypt(args, out, filename):
     dec = out.replace(".enc4", "").replace(".enc2", "") # TODO: use a better way of doing this
